@@ -1,0 +1,95 @@
+/* Container for the people list */
+.index-container {
+    padding: 20px;
+}
+
+/* List of people */
+.people-list {
+    list-style: none;
+    padding: 0;
+}
+
+.person-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+/* Buttons and actions */
+.person-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.index-button {
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.edit-button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.delete-button {
+    background-color: #F44336;
+    color: white;
+}
+
+.index-button:hover {
+    opacity: 0.8;
+}
+
+/* Ensure modal has the right positioning and styles */
+.edit-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+}
+
+.edit-box {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    width: 300px;
+}
+
+.edit-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.edit-buttons button {
+    padding: 10px 20px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.edit-buttons button:hover {
+    opacity: 0.8;
+}
+
+.edit-buttons .yes-button {
+    background-color: #28a745;
+    color: white;
+}
+
+.edit-buttons .cancel-button {
+    background-color: gray;
+    color: white;
+}
