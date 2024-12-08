@@ -1,77 +1,132 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Person;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
-class ApiAuthenticatedSessionController extends Controller
+class PeopleController extends Controller
 {
-    // API login method
-    public function login(Request $request)
+    protected function validationRules($id = null)
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'surname' => 'required|string|max:255',
+            'south_african_id' => 'required|string|max:13|unique:people,south_african_id' . ($id ? ',' . $id : ''),
+            'mobile_number' => 'required|string|max:15|unique:people,mobile_number' . ($id ? ',' . $id : ''),
+            'email' => 'required|email|max:255|unique:people,email' . ($id ? ',' . $id : ''),
+            'birth_date' => 'required|date',
+            'language' => 'nullable|string|max:255',
+            'interests' => 'nullable|array',
+        ];
+    }
+
+    // Get all people
+    public function index()
     {
         try {
-            // Validate login credentials
-            $validatedData = $request->validate([
-                'email' => 'required|email',
-                'password' => 'required',
-            ]);
+            $people = Person::all();
 
-            // Attempt authentication
-            if (!Auth::attempt($validatedData)) {
-                throw ValidationException::withMessages([
-                    'email' => ['The provided credentials are incorrect.'],
-                ]);
-            }
-
-            $user = $request->user();
-
-            // Attempt to generate token
-            try {
-                $token = $user->createToken('API Token')->plainTextToken;
-            } catch (Exception $e) {
-                Log::error('Error generating token for user: ' . $user->id, ['error' => $e->getMessage()]);
-                return response()->json(['message' => 'Error generating authentication token'], 500);
-            }
-
-            // Return success response
             return response()->json([
-                'token' => $token,
-                'user' => $user,
+                'message' => 'People retrieved successfully.',
+                'people' => $people,
             ], 200);
-
-        } catch (ValidationException $e) {
-            // Handle validation errors (e.g., invalid email or missing password)
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (Exception $e) {
-            // Catch unexpected errors and log them
-            Log::error('Login error: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'An unexpected error occurred. Please try again later.'
-            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving people: ' . $e->getMessage());
+            return response()->json(['message' => 'Unable to retrieve people.'], 500);
         }
     }
 
-    // API logout method
-    public function logout(Request $request)
+    // Create a new person
+    public function store(Request $request)
+    {
+        $validated = $request->validate($this->validationRules());
+
+        try {
+            $person = Person::create([
+                'user_id' => $request->user_id, // Optional user association
+                'name' => $validated['name'],
+                'surname' => $validated['surname'],
+                'south_african_id' => $validated['south_african_id'],
+                'mobile_number' => $validated['mobile_number'],
+                'email' => $validated['email'],
+                'birth_date' => $validated['birth_date'],
+                'language' => $validated['language'] ?? null,
+                'interests' => isset($validated['interests']) ? json_encode($validated['interests']) : null,
+            ]);
+
+            return response()->json([
+                'message' => 'Person created successfully.',
+                'person' => $person,
+            ], 201);
+        } catch (QueryException $e) {
+            Log::error('Error creating person: ' . $e->getMessage());
+            return response()->json(['message' => 'Unable to save person.'], 500);
+        }
+    }
+
+    // Show a single person
+    public function show($id)
     {
         try {
-            // Revoke all tokens for the authenticated user
-            $request->user()->tokens()->delete();
+            $person = Person::findOrFail($id);
 
-            return response()->json(['message' => 'Logged out successfully'], 200);
-        } catch (Exception $e) {
-            Log::error('Logout error: ' . $e->getMessage());
             return response()->json([
-                'message' => 'An error occurred during logout. Please try again later.'
-            ], 500);
+                'message' => 'Person retrieved successfully.',
+                'person' => $person,
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Person not found.'], 404);
+        }
+    }
+
+    // Update a person
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate($this->validationRules($id));
+
+        try {
+            $person = Person::findOrFail($id);
+
+            $person->update([
+                'user_id' => $request->user_id ?? $person->user_id,
+                'name' => $validated['name'],
+                'surname' => $validated['surname'],
+                'south_african_id' => $validated['south_african_id'],
+                'mobile_number' => $validated['mobile_number'],
+                'email' => $validated['email'],
+                'birth_date' => $validated['birth_date'],
+                'language' => $validated['language'] ?? null,
+                'interests' => isset($validated['interests']) ? json_encode($validated['interests']) : null,
+            ]);
+
+            return response()->json([
+                'message' => 'Person updated successfully.',
+                'person' => $person,
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Person not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Unable to update person.'], 500);
+        }
+    }
+
+    // Delete a person
+    public function destroy($id)
+    {
+        try {
+            $person = Person::findOrFail($id);
+            $person->delete();
+
+            return response()->json(['message' => 'Person deleted successfully.'], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Person not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Unable to delete person.'], 500);
         }
     }
 }

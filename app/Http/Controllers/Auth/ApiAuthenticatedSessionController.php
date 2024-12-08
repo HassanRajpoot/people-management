@@ -7,15 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ApiAuthenticatedSessionController extends Controller
 {
-    /**
-     * API Login method
-     */
     public function apiLogin(Request $request): JsonResponse
     {
+        // Define validation rules and messages
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string|min:6',
@@ -37,6 +36,9 @@ class ApiAuthenticatedSessionController extends Controller
         try {
             // Attempt to log in with the provided credentials
             if (Auth::attempt($request->only('email', 'password'))) {
+                // Regenerate the session
+                $request->session()->regenerate();
+
                 // Create a Sanctum token for the user
                 $user = Auth::user();
                 $token = $user->createToken('YourAppName')->plainTextToken; // Create token using Sanctum
@@ -63,14 +65,19 @@ class ApiAuthenticatedSessionController extends Controller
     }
 
     /**
-     * API Logout method
+     * Destroy an authenticated session for API.
      */
     public function apiLogout(Request $request): JsonResponse
     {
         try {
             if (Auth::check()) {
-                // Revoke the user's tokens (logout)
+                // Revoke the user's tokens
                 Auth::user()->tokens()->delete();
+
+                // Log out the user
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
 
                 return response()->json(['message' => 'Logout successful'], 200);
             }
@@ -81,6 +88,7 @@ class ApiAuthenticatedSessionController extends Controller
             ], 400);
 
         } catch (Throwable $e) {
+            // Catch any unexpected errors during logout
             return response()->json([
                 'message' => 'An error occurred during logout. Please try again later.',
                 'error' => $e->getMessage(),
